@@ -1,0 +1,14 @@
+
+# Secrets
+.env
+
+# Large media files
+road.jpeg
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
