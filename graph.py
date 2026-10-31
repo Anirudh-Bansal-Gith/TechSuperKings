@@ -1,132 +1,89 @@
 
-import os
-import base64
 from typing import TypedDict
 
-from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
-from langchain_core.messages import SystemMessage, HumanMessage
 from langgraph.graph import StateGraph, START, END
+from langchain_core.messages import SystemMessage, HumanMessage
 
+from llms import classification_llm
 from schema import Schema
 from prompts import SYSTEM_INSTRUCTION
-
-load_dotenv()
-
-llm = ChatOpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=os.getenv("OPEN_ROUTER_KEY"),
-    model="openrouter/free"
-)
-
-structured_llm = llm.with_structured_output(
-    Schema,
-    method="json_schema",
-    strict=True
-)
+from image_processor import process_image
+from audio_processor import process_audio
 
 
 class ComplaintState(TypedDict, total=False):
     complaint_text: str
-    attachments: list
+    attachments: list[dict]
+    processed_text: str
     structured_output: Schema
+
+
+structured_llm = classification_llm.with_structured_output(
+    Schema,
+    method="json_schema",
+    strict=True,
+)
+
+
+def process_attachments(state: ComplaintState):
+
+    complaint_text = state.get("complaint_text", "")
+    attachments = state.get("attachments", [])
+
+    processed_text = f"Complaint:\n{complaint_text}"
+
+    for attachment in attachments:
+
+        mime_type = attachment["mime_type"]
+        data = attachment["data"]
+
+        if mime_type.startswith("image/"):
+
+            description = process_image(
+                image_bytes=data,
+                mime_type=mime_type,
+            )
+
+            processed_text += (
+                "\n\nImage description:\n" + description
+            )
+
+        elif mime_type.startswith("audio/"):
+
+            transcript = process_audio(
+                audio_bytes=data,
+                filename=attachment["filename"],
+            )
+
+            processed_text += (
+                "\n\nAudio transcript:\n" + transcript
+            )
+
+        else:
+            raise ValueError(
+                f"Unsupported attachment type: {mime_type}"
+            )
+
+    return {"processed_text": processed_text}
 
 
 def classify_complaint(state: ComplaintState):
 
-    content = [
-        {
-            "type": "text",
-            "text": state.get("complaint_text") or ""
-        }
-    ]
-
-    attachments = state.get("attachments") or []
-
-    for attachment in attachments:
-
-        # Ignore null attachment entries
-        if attachment is None:
-            continue
-
-        mime_type = attachment.get("mime_type")
-        file_data = attachment.get("data")
-
-        if not mime_type:
-            raise ValueError("Attachment MIME type is missing")
-
-        if not file_data:
-            raise ValueError("Attachment data is empty or missing")
-
-        mime_type = mime_type.lower().split(";")[0].strip()
-
-        encoded_data = base64.b64encode(
-            file_data
-        ).decode("utf-8")
-
-        if mime_type.startswith("image/"):
-
-            content.append({
-                "type": "image_url",
-                "image_url": {
-                    "url": f"data:{mime_type};base64,{encoded_data}"
-                }
-            })
-
-        elif mime_type.startswith("audio/"):
-
-            audio_format = mime_type.split("/")[-1]
-
-            format_mapping = {
-                "mpeg": "mp3",
-                "x-wav": "wav",
-                "wave": "wav",
-                "mp4": "m4a",
-                "x-m4a": "m4a"
-            }
-
-            audio_format = format_mapping.get(
-                audio_format,
-                audio_format
-            )
-
-            content.append({
-                "type": "input_audio",
-                "input_audio": {
-                    "data": encoded_data,
-                    "format": audio_format
-                }
-            })
-
-        elif mime_type.startswith("video/"):
-
-            content.append({
-                "type": "video_url",
-                "video_url": {
-                    "url": f"data:{mime_type};base64,{encoded_data}"
-                }
-            })
-
-        else:
-            raise ValueError(
-                f"Unsupported attachment MIME type: {mime_type}"
-            )
-
-    messages = [
+    response = structured_llm.invoke([
         SystemMessage(content=SYSTEM_INSTRUCTION),
-        HumanMessage(content=content)
-    ]
-
-    response = structured_llm.invoke(messages)
+        HumanMessage(content=state["processed_text"]),
+    ])
 
     return {"structured_output": response}
 
 
 builder = StateGraph(ComplaintState)
 
+builder.add_node("process_attachments", process_attachments)
 builder.add_node("classify_complaint", classify_complaint)
 
-builder.add_edge(START, "classify_complaint")
+builder.add_edge(START, "process_attachments")
+builder.add_edge("process_attachments", "classify_complaint")
 builder.add_edge("classify_complaint", END)
 
 graph = builder.compile()

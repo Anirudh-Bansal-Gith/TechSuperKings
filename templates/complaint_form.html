@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+
+    <link rel="stylesheet" href="../css/complaint_form.css">
+</head>
+<body>
+    
+    <h2>Fill Complaint Details</h2>
+    
+    <form id="complaintForm">
+
+        <div class="form-group">
+            <label for="complaintTitle">Complaint Title:</label>
+            <input type="text" id="complaintTitle" name="complaintTitle">
+        </div>
+
+        <br>
+
+        <div class="form-group">
+            <label for="complaintDescription">Complaint Description:</label>
+            <textarea id="complaintDescription" name="complaintDescription" rows="15" cols="80" placeholder="Write Here"></textarea>
+        </div>
+        
+        <br>
+
+        <div class="form-group">
+            <label for="file">Upload Supporting Files:</label>
+            <input type="file" id="file" name="file" multiple accept="image/*,video/*">
+        </div>
+        
+        <br>
+
+        <div class="recorder-container">
+            <div class="recorder-header">
+
+                <span>Add voice description in your own language :</span>
+
+                <div class="status-indicator"> 
+                    <span id="pulseDot" class="pulse-dot" aria-hidden="true"></span>
+                    <span id="statusText" role="status" aria-live="polite">Ready to record</span>
+                </div>
+
+                <time id="timer" class="timer" aria-label="Recording length" datetime="PT0S">00:00</time>
+
+            </div>
+    
+            <div class="recorder-controls">
+
+                <button type="button" id="startBtn" class="btn btn-primary">
+                    <span aria-hidden="true">●</span> Record
+                </button>
+
+                <button type="button" id="pauseBtn" class="btn btn-secondary" disabled hidden>Pause</button>
+
+                <button type="button" id="stopBtn" class="btn btn-danger" disabled>
+                    <span aria-hidden="true">■</span> Stop
+                </button>
+
+                <button type="button" id="deleteBtn" class="btn btn-secondary" hidden>Retake</button>
+                
+            </div>
+        
+            <p id="errorText" class="recorder-error" role="alert" hidden></p>
+        
+            <audio id="audioPlayback" controls hidden aria-label="Voice note playback"></audio>
+        </div>
+
+        <br>
+
+        <button type="submit">Submit Complaint</button>
+    </form>
+
+    <div id="response"></div>
+
+    <script src="../script/complaint_form.js"></script>
+</body>
+</html>
