@@ -4,7 +4,15 @@ pydantic
 python-dotenv
 sqlalchemy
 sqlalchemy-libsql
+libsql-experimental
 boto3
 fastapi
 uvicorn
 python-multipart
+httpx
+pillow
+google-genai
+langchain-google-genai
+requests
+starlette
+
