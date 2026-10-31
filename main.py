@@ -1,10 +1,5 @@
 
 from graph import graph
-from database import SessionLocal, engine, Base
-from models import Complaint, ComplaintAttachment
-from persistence import save_complaint
-
-Base.metadata.create_all(bind=engine)
 
 
 def process_complaint(complaint_text, uploaded_files=None):
@@ -15,7 +10,6 @@ def process_complaint(complaint_text, uploaded_files=None):
 
     for file in uploaded_files:
 
-        # Ignore null entries
         if file is None:
             continue
 
@@ -26,7 +20,7 @@ def process_complaint(complaint_text, uploaded_files=None):
                 f"MIME type missing for file: {file.filename}"
             )
 
-        # Read the file without consuming its stream permanently
+        # Read the uploaded file
         file.file.seek(0)
         file_data = file.file.read()
         file.file.seek(0)
@@ -39,28 +33,16 @@ def process_complaint(complaint_text, uploaded_files=None):
         attachments.append({
             "data": file_data,
             "mime_type": mime_type,
-            "filename": file.filename
+            "filename": file.filename,
         })
 
-    # Send all attachments to the graph
+    # Run complaint processing and classification
     result = graph.invoke({
         "complaint_text": complaint_text or "",
-        "attachments": attachments
+        "attachments": attachments,
     })
 
     llm_output = result["structured_output"]
 
-    # Save complaint and original files
-    db = SessionLocal()
-
-    try:
-        final_output = save_complaint(
-            db,
-            llm_output,
-            [f for f in uploaded_files if f is not None]
-        )
-
-        return final_output
-
-    finally:
-        db.close()
+    # Convert Pydantic output into a JSON-compatible dictionary
+    return llm_output.model_dump(mode="json")
