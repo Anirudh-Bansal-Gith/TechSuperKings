@@ -18,12 +18,10 @@ class ComplaintState(TypedDict, total=False):
     structured_output: Schema
 
 
-structured_llm = classification_llm.with_structured_output(
+structured_llm = llm.with_structured_output(
     Schema,
-    method="json_schema",
-    strict=True,
+    method="function_calling"
 )
-
 
 def process_attachments(state: ComplaintState):
 
