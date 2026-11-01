@@ -23,12 +23,19 @@ def process_audio(
     audio_file.name = filename
 
     try:
+        
         response = client.speech_to_text.transcribe(
             file=audio_file,
             model="saaras:v4",
             mode="transcribe",
-            language_code="unknown"
+            language_code="unknown",
         )
+
+        print("RAW RESPONSE:", repr(response))
+        print("RESPONSE TYPE:", type(response))
+        print("TRANSCRIPT:", repr(getattr(response, "transcript", None)))
+        print("FILENAME:", filename)
+        print("AUDIO SIZE:", len(audio_bytes))
 
         transcript = response.transcript
 

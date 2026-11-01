@@ -1,10 +1,16 @@
 
 from graph import graph
+from database import SessionLocal
+from persistence import save_complaint
 
 
-def process_complaint(complaint_text, uploaded_files=None):
-
+def process_complaint(
+    complaint_text,
+    uploaded_files=None,
+    user_details=None
+):
     uploaded_files = uploaded_files or []
+    user_details = user_details or {}
 
     attachments = []
 
@@ -20,7 +26,6 @@ def process_complaint(complaint_text, uploaded_files=None):
                 f"MIME type missing for file: {file.filename}"
             )
 
-        # Read the uploaded file
         file.file.seek(0)
         file_data = file.file.read()
         file.file.seek(0)
@@ -44,5 +49,21 @@ def process_complaint(complaint_text, uploaded_files=None):
 
     llm_output = result["structured_output"]
 
-    # Convert Pydantic output into a JSON-compatible dictionary
-    return llm_output.model_dump(mode="json")
+    db = SessionLocal()
+
+    try:
+        if llm_output.importance_score > 0:
+            return save_complaint(
+                db,
+                llm_output,
+                [file for file in uploaded_files if file is not None],
+                user_details
+            )
+
+        return {
+            "message": "Your complaint appears to be invalid or irrelevant.",
+            "saved": False
+        }
+
+    finally:
+        db.close()
