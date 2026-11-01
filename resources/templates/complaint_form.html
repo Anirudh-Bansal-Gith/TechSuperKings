@@ -1,82 +1,98 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-
-    <link rel="stylesheet" href="../css/complaint_form.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Submit a Complaint</title>
+  <link rel="stylesheet" href="../css/complaint_form.css">
 </head>
 <body>
-    
-    <h2>Fill Complaint Details</h2>
-    
-    <form id="complaintForm">
+  <main class="page-container">
+    <header class="page-header">
+      <p class="eyebrow">SUPPORT PORTAL</p>
+      <h1>Submit a Complaint</h1>
+      <p>Share the details below so the concerned team can look into your issue.</p>
+    </header>
 
+    <form id="complaintForm" class="complaint-form">
+      <section class="form-section">
+        <div class="section-heading"><span>01</span><div><h2>Complaint details</h2><p>Describe the issue and attach supporting evidence.</p></div></div>
         <div class="form-group">
-            <label for="complaintTitle">Complaint Title:</label>
-            <input type="text" id="complaintTitle" name="complaintTitle">
+          <label for="complaintTitle">Complaint title <small>(optional)</small></label>
+          <input type="text" id="complaintTitle" name="complaintTitle" placeholder="A short title for your complaint">
         </div>
-
-        <br>
-
         <div class="form-group">
-            <label for="complaintDescription">Complaint Description:</label>
-            <textarea id="complaintDescription" name="complaintDescription" rows="15" cols="80" placeholder="Write Here"></textarea>
+          <label for="complaintDescription">Complaint description <small>(optional)</small></label>
+          <textarea id="complaintDescription" name="complaintDescription" rows="7" placeholder="Explain what happened and include relevant details."></textarea>
         </div>
-        
-        <br>
-
         <div class="form-group">
-            <label for="file">Upload Supporting Files:</label>
-            <input type="file" id="file" name="file" multiple accept="image/*,video/*">
+          <label for="file">Supporting files <small>(optional)</small></label>
+          <input type="file" id="file" name="file" multiple accept="image/*,video/*,audio/*">
+          <p class="help-text">Images, videos and audio files are supported.</p>
         </div>
-        
-        <br>
+      </section>
 
+      <section class="form-section">
+        <div class="section-heading"><span>02</span><div><h2>Contact information</h2><p>How can the team contact you?</p></div></div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="name">Full name <b>*</b></label>
+            <input type="text" id="name" name="name" placeholder="Your name" autocomplete="name" required>
+          </div>
+          <div class="form-group">
+            <label for="phone">Phone number <b>*</b></label>
+            <input type="tel" id="phone" name="phone" placeholder="10-digit mobile number" maxlength="10" pattern="[6-9][0-9]{9}" autocomplete="tel" required>
+          </div>
+          <div class="form-group full-width">
+            <label for="email">Email address <small>(optional)</small></label>
+            <input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email">
+          </div>
+        </div>
+      </section>
+
+      <section class="form-section">
+        <div class="section-heading"><span>03</span><div><h2>Location</h2><p>Provide at least one location detail.</p></div></div>
+        <button type="button" id="getLocation" class="button secondary">📍 Use my current location</button>
+        <p id="status" class="status" role="status" aria-live="polite"></p>
+        <input type="hidden" id="latitude" name="latitude">
+        <input type="hidden" id="longitude" name="longitude">
+        <div class="or-divider"><span>OR</span></div>
+        <div class="form-group">
+          <label for="address">Full address <small>(optional if GPS is used)</small></label>
+          <textarea id="address" name="address" rows="3" placeholder="House/building, street, area, city, PIN code"></textarea>
+          <p id="error" class="field-error" role="alert"></p>
+        </div>
+      </section>
+
+      <section class="form-section">
+        <div class="section-heading"><span>04</span><div><h2>Voice description</h2><p>Explain the complaint in your own language.</p></div></div>
         <div class="recorder-container">
-            <div class="recorder-header">
-
-                <span>Add voice description in your own language :</span>
-
-                <div class="status-indicator"> 
-                    <span id="pulseDot" class="pulse-dot" aria-hidden="true"></span>
-                    <span id="statusText" role="status" aria-live="polite">Ready to record</span>
-                </div>
-
-                <time id="timer" class="timer" aria-label="Recording length" datetime="PT0S">00:00</time>
-
-            </div>
-    
-            <div class="recorder-controls">
-
-                <button type="button" id="startBtn" class="btn btn-primary">
-                    <span aria-hidden="true">●</span> Record
-                </button>
-
-                <button type="button" id="pauseBtn" class="btn btn-secondary" disabled hidden>Pause</button>
-
-                <button type="button" id="stopBtn" class="btn btn-danger" disabled>
-                    <span aria-hidden="true">■</span> Stop
-                </button>
-
-                <button type="button" id="deleteBtn" class="btn btn-secondary" hidden>Retake</button>
-                
-            </div>
-        
-            <p id="errorText" class="recorder-error" role="alert" hidden></p>
-        
-            <audio id="audioPlayback" controls hidden aria-label="Voice note playback"></audio>
+          <div class="recorder-header">
+            <strong>Voice note</strong>
+            <div class="status-indicator"><span id="pulseDot" class="pulse-dot" aria-hidden="true"></span><span id="statusText" role="status" aria-live="polite">Ready to record</span></div>
+            <time id="timer" class="timer" aria-label="Recording length" datetime="PT0S">00:00</time>
+          </div>
+          <div class="recorder-controls">
+            <button type="button" id="startBtn" class="button primary"><span aria-hidden="true">●</span> Record</button>
+            <button type="button" id="pauseBtn" class="button secondary" disabled hidden>Pause</button>
+            <button type="button" id="stopBtn" class="button danger" disabled><span aria-hidden="true">■</span> Stop</button>
+            <button type="button" id="deleteBtn" class="button secondary" hidden>Retake</button>
+          </div>
+          <p id="errorText" class="field-error" role="alert" hidden></p>
+          <audio id="audioPlayback" controls hidden aria-label="Voice note playback"></audio>
         </div>
+      </section>
 
-        <br>
-
-        <button type="submit">Submit Complaint</button>
+      <div class="form-footer">
+        <p><b>*</b> Required fields</p>
+        <button type="submit" class="button submit-button">Submit complaint <span aria-hidden="true">→</span></button>
+      </div>
     </form>
+    <div id="response" class="response-box" aria-live="polite"></div>
+  </main>
 
-    <div id="response"></div>
-
-    <script src="../script/complaint_form.js"></script>
-    <script src="../script/voice_recorder.js"></script>
+  <script src="../script/complaint_form.js"></script>
+  <script src="../script/voice_recorder.js"></script>
+  <script src="../script/current_location.js"></script>
 </body>
 </html>

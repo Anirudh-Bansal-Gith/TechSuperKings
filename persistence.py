@@ -17,6 +17,13 @@ def save_complaint(db, llm_output, uploaded_files, user_details=None):
     user_details = user_details or {}
     uploaded_keys = []
 
+    # Convert UserInfo field names to Complaint model field names.
+    mapped_user_details = {
+        db_field: user_details[schema_field]
+        for schema_field, db_field in USER_FIELD_MAPPING.items()
+        if schema_field in user_details
+    }
+
     try:
         complaint = Complaint(
             **output,

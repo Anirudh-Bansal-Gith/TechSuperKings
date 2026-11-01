@@ -36,6 +36,10 @@ def process_attachments(state: ComplaintState):
         data = attachment["data"]
 
         if mime_type.startswith("image/"):
+            description = process_image(
+                image_bytes=attachment["data"],
+                mime_type=mime_type,
+            )
 
             description = process_image(
                 image_bytes=data,
