@@ -1,4 +1,3 @@
-
 const CONFIG = {
     api_url: "http://localhost:8000/complaints",
     max_file_MB: 25,
@@ -35,6 +34,7 @@ form.addEventListener("submit", async (e) => {
     // Contact information
     const name = form.elements.namedItem("name").value.trim();
     const phone = form.elements.namedItem("phone").value.trim();
+    const email = form.elements.namedItem("email").value.trim();
 
     // Location information
     const latitude = form.elements.namedItem("latitude").value;
@@ -74,6 +74,7 @@ form.addEventListener("submit", async (e) => {
             voice,
             name,
             phone,
+            email,
             latitude,
             longitude,
             address
@@ -114,6 +115,7 @@ function packData(
     voice = null,
     name,
     phone,
+    email,
     latitude,
     longitude,
     address
@@ -124,6 +126,7 @@ function packData(
     const userDetails = {
         name: name,
         phone: phone || null,
+        email: email || null,
         address: address || (
             latitude && longitude
                 ? `${latitude}, ${longitude}`
@@ -221,6 +224,15 @@ async function submit_complaint(formData) {
             );
         }
 
+        // Handle irrelevant complaints.
+        if (body.saved === false) {
+            showResult(body);
+
+            // Do not reset the form.
+            return body;
+        }
+
+        // Handle successfully saved complaints.
         showResult(body);
 
         showMessage(
@@ -252,22 +264,33 @@ async function submit_complaint(formData) {
 }
 
 
-function showResult({
-    query_description,
-    department,
-    importance_score
-}) {
+// Display the backend response.
+function showResult(body) {
     responseBox.replaceChildren();
 
     const heading = document.createElement("h3");
-    heading.textContent = "Complaint submitted";
 
+    // Irrelevant complaint
+    if (body.saved === false) {
+        heading.textContent = "Complaint not submitted";
+        responseBox.append(heading);
+
+        const message = document.createElement("p");
+        message.textContent = body.message || "Your complaint could not be submitted.";
+
+        responseBox.append(message);
+        return;
+    }
+
+    // Relevant complaint
+    heading.textContent = "Complaint submitted";
     responseBox.append(heading);
 
     const rows = [
-        ["Summary", query_description],
-        ["Department", department],
-        ["Priority score", importance_score],
+        ["Complaint ID", body.complaint_id],
+        ["Summary", body.query_description],
+        ["Department", body.department],
+        ["Priority score", body.importance_score],
     ];
 
     for (const [label, value] of rows) {
@@ -420,4 +443,3 @@ function validate(data, files) {
 
     locationBtn.addEventListener("click", getLocation);
 })();
-
