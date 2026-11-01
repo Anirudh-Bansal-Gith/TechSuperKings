@@ -39,3 +39,8 @@ class Schema(BaseModel):
     query_description: str
     department: Department
     importance_score: int = Field(ge=-100, le=100)
+
+class UserInfo(BaseModel):
+    name: str
+    phone: str
+    address: str
