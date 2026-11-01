@@ -31,6 +31,13 @@ form.addEventListener("submit", async (e) => {
     const files = Array.from(form.file.files)
     const voice = window.voiceNote?.blob || null
 
+    const name = form.name.value.trim()
+    const phone = form.phone.value.trim()
+    const latitude = form.latitude.value
+    const longitude = form.longitude.value
+    const address = form.address.value.trim()
+
+
     const problem = validate({ title, description, voice }, files)
 
     if (problem) {
@@ -38,7 +45,8 @@ form.addEventListener("submit", async (e) => {
         return
     }
 
-    await submit_complaint(packData(title, description, files, voice))
+    const formData = await packData(title, description, files, voice, name, phone, latitude, longitude, address)
+    await submit_complaint(formData)
 })
 
 function showMessage(text, type = "info") {
@@ -55,18 +63,50 @@ function setLoading(on) {
     submitBtn.textContent = on ? "Submitting…" : "Submit Complaint"
 }
 
-function packData(title, description, files = [], voice = null) {
+async function getAddress(latitude, longitude) {
+
+    if (!latitude || !longitude) return ""
+
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`;
+
+    try {
+        const response = await fetch(url);
+
+        if (!response.ok) {
+            throw new Error("Unable to fetch address");
+        }
+
+        const data = await response.json();
+
+        console.log(data)
+
+        return data.display_name; // String
+
+    } catch (err) {
+        console.error(err);
+        return ""; // Empty string on failure
+    }
+}
+
+async function packData(title, description, files = [], voice = null, name, phone, latitude, longitude, address) {
 
     const formData = new FormData()
-    let complaint_text = ""
 
-    if (title) complaint_text += `{title: ${title}}`
-    if (description) complaint_text += `{description: ${description}}`
+    const complaint_text = {
+        "title": title,
+        "description": description
+    }
+    
+    formData.append("complaint_text", JSON.stringify(complaint_text))
 
-    formData.append("complaint_text", complaint_text)
+    const user_info = {
+        "name": name,
+        "phone": phone,
+    }
+    user_info["address"] = await getAddress(latitude, longitude) || address
+    formData.append("user_info", JSON.stringify(user_info))
 
     files.forEach((file) => formData.append("files", file))
-
     if (voice) formData.append("files", voice, "voice-note.webm")
 
     return formData

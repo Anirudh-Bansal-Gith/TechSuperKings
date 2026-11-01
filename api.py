@@ -3,9 +3,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from main import process_complaint
-from schema import Schema
+from schema import Schema, UserInfo
 from fastapi import FastAPI, Form, File, UploadFile
 from pydantic import BaseModel, Field
+import json
 
 app = FastAPI()
 
@@ -24,9 +25,12 @@ templates = Jinja2Templates(directory="resources/templates")
 
 @app.post("/complaints")
 def create_complaint(
+    user_info: str = Form(...),
     complaint_text: str = Form(""),
     files: list[UploadFile] | None = File(default=None)
 ):
+
+    user = UserInfo(**json.loads(user_info))
 
     try:
         result = process_complaint(

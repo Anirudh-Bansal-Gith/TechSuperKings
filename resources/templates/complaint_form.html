@@ -29,10 +29,39 @@
 
         <div class="form-group">
             <label for="file">Upload Supporting Files:</label>
-            <input type="file" id="file" name="file" multiple accept="image/*,video/*">
+            <input type="file" id="file" name="file" multiple accept="image/*,video/*,audio/*">
         </div>
         
         <br>
+
+        <div class="form-group">
+            <h4>Contact Information</h4>
+
+            <label for="name">Enter Your Name:</label><br>
+            <input type="text" id="name" name="name" placeholder="Your name" required><br>
+            <label for="phone">Enter Your Phone Number:</label>
+            <input type="tel" id="phone" name="phone" maxlength="10" pattern="[6-9][0-9]{9}" required> 
+        </div>
+
+        <div>
+
+            <h4>Location (provide at least one)</h4>
+
+            <button type="button" id="getLocation">📍 Use my current location</button>
+            <p id="status"></p>
+
+            <!-- hidden: filled only by GPS -->
+            <input type="hidden" id="latitude" name="latitude">
+            <input type="hidden" id="longitude" name="longitude">
+
+            <p>— or —</p>
+
+            <textarea id="address" name="address"
+                placeholder="Full address"></textarea>
+
+            <p id="error" style="color:red;"></p>
+
+        </div>
 
         <div class="recorder-container">
             <div class="recorder-header">
@@ -47,6 +76,8 @@
                 <time id="timer" class="timer" aria-label="Recording length" datetime="PT0S">00:00</time>
 
             </div>
+
+    
     
             <div class="recorder-controls">
 
@@ -78,5 +109,6 @@
 
     <script src="../script/complaint_form.js"></script>
     <script src="../script/voice_recorder.js"></script>
+    <script src="../script/current_location.js"></script>
 </body>
 </html>
