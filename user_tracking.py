@@ -2,8 +2,17 @@
 import requests
 import streamlit as st
 
-API_URL = "http://localhost:8000/track"
+environment = st.sidebar.selectbox(
+    "Backend environment",
+    ["Local", "Production"]
+)
 
+API_URLS = {
+    "Local": "http://localhost:8000",
+    "Production": "https://techsuperkings.onrender.com"
+}
+
+API_URL = API_URLS[environment]
 st.set_page_config(
     page_title="Track Complaint",
     page_icon="📍",
