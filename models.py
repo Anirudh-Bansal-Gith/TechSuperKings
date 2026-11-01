@@ -10,6 +10,10 @@ class Complaint(Base):
     query_description = Column(String, nullable=False)
     department = Column(String, nullable=False)
     importance_score = Column(Integer, nullable=False)
+    user_name = Column(String, nullable= False)
+    email_id = Column(String, nullable= True)
+    phone_number = Column(String, nullable= True)
+    location = Column(String, nullable= True)
 
 
 class ComplaintAttachment(Base):
