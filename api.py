@@ -26,23 +26,31 @@ templates = Jinja2Templates(directory="resources/templates")
 def create_complaint(
     user_info: str = Form(...),
     complaint_text: str = Form(""),
-    files: list[UploadFile] | None = File(default=None)
+    files: list[UploadFile] | None = File(default=None),
 ):
 
     user = UserInfo(**json.loads(user_info))
 
     try:
+        user_data = json.loads(user_details)
+
+        if not isinstance(user_data, dict):
+            raise ValueError("User details must be a JSON object.")
+
+        user = UserInfo(**user_data)
+
         result = process_complaint(
             complaint_text,
-            files
+            files,
+            user.model_dump(exclude_none=True),
         )
 
         return result
 
-    except ValueError as e:
+    except (ValueError, TypeError) as e:
         raise HTTPException(
             status_code=400,
-            detail=str(e)
+            detail=str(e),
         )
 
 

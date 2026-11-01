@@ -1,3 +1,5 @@
+import os
+import tempfile
 
 from graph import graph
 from database import SessionLocal
@@ -13,27 +15,29 @@ def process_complaint(
     user_details = user_details or {}
 
     attachments = []
+    temp_paths = []
 
-    for file in uploaded_files:
+    try:
+        for file in uploaded_files:
+            if file is None:
+                continue
+
+            mime_type = file.content_type
 
         if file is None:
             continue
 
-        mime_type = file.content_type
+            file.file.seek(0)
 
-        if not mime_type:
-            raise ValueError(
-                f"MIME type missing for file: {file.filename}"
-            )
+            # Videos: store on disk instead of loading into RAM
+            if mime_type.startswith("video/"):
+                suffix = os.path.splitext(file.filename or "")[1]
 
         file.file.seek(0)
         file_data = file.file.read()
         file.file.seek(0)
 
-        if not file_data:
-            raise ValueError(
-                f"Empty file uploaded: {file.filename}"
-            )
+                temp_paths.append(temp_path)
 
         attachments.append({
             "data": file_data,
@@ -47,7 +51,7 @@ def process_complaint(
         "attachments": attachments,
     })
 
-    llm_output = result["structured_output"]
+                        temp_file.write(chunk)
 
     db = SessionLocal()
 
@@ -66,4 +70,9 @@ def process_complaint(
         }
 
     finally:
-        db.close()
+        # Delete temporary video files regardless of success or failure
+        for path in temp_paths:
+            try:
+                os.remove(path)
+            except OSError:
+                pass
