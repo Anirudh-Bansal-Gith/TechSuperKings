@@ -15,3 +15,4 @@ langchain-google-genai
 requests
 starlette
 jinja2
+sarvamai
