@@ -9,7 +9,7 @@ from persistence import save_complaint
 def process_complaint(
     complaint_text,
     uploaded_files=None,
-    user_details=None,
+    user_details=None
 ):
     uploaded_files = uploaded_files or []
     user_details = user_details or {}
@@ -24,10 +24,8 @@ def process_complaint(
 
             mime_type = file.content_type
 
-            if not mime_type:
-                raise ValueError(
-                    f"MIME type missing for file: {file.filename}"
-                )
+        if file is None:
+            continue
 
             file.file.seek(0)
 
@@ -35,81 +33,40 @@ def process_complaint(
             if mime_type.startswith("video/"):
                 suffix = os.path.splitext(file.filename or "")[1]
 
-                fd, temp_path = tempfile.mkstemp(suffix=suffix)
-                os.close(fd)
+        file.file.seek(0)
+        file_data = file.file.read()
+        file.file.seek(0)
 
                 temp_paths.append(temp_path)
 
-                with open(temp_path, "wb") as temp_file:
-                    while True:
-                        chunk = file.file.read(1024 * 1024)
+        attachments.append({
+            "data": file_data,
+            "mime_type": mime_type,
+            "filename": file.filename,
+        })
 
-                        if not chunk:
-                            break
+    # Run complaint processing and classification
+    result = graph.invoke({
+        "complaint_text": complaint_text or "",
+        "attachments": attachments,
+    })
 
                         temp_file.write(chunk)
 
-                if os.path.getsize(temp_path) == 0:
-                    raise ValueError(
-                        f"Empty file uploaded: {file.filename}"
-                    )
+    db = SessionLocal()
 
-                attachments.append({
-                    "path": temp_path,
-                    "mime_type": mime_type,
-                    "filename": file.filename,
-                })
-
-            # Images and audio: continue using bytes
-            else:
-                file_data = file.file.read()
-
-                if not file_data:
-                    raise ValueError(
-                        f"Empty file uploaded: {file.filename}"
-                    )
-
-                attachments.append({
-                    "data": file_data,
-                    "mime_type": mime_type,
-                    "filename": file.filename,
-                })
-
-            # Keep original upload ready for B2 persistence
-            file.file.seek(0)
-
-        result = graph.invoke({
-            "complaint_text": complaint_text or "",
-            "attachments": attachments,
-        })
-
-        llm_output = result["structured_output"]
-
+    try:
         if llm_output.importance_score > 0:
-            # Ensure original files are ready for B2 upload
-            for file in uploaded_files:
-                if file is not None:
-                    file.file.seek(0)
-
-            db = SessionLocal()
-
-            try:
-                return save_complaint(
-                    db,
-                    llm_output,
-                    [
-                        file
-                        for file in uploaded_files
-                        if file is not None
-                    ],
-                    user_details,
-                )
-            finally:
-                db.close()
+            return save_complaint(
+                db,
+                llm_output,
+                [file for file in uploaded_files if file is not None],
+                user_details
+            )
 
         return {
             "message": "Your complaint appears to be invalid or irrelevant.",
-            "saved": False,
+            "saved": False
         }
 
     finally:

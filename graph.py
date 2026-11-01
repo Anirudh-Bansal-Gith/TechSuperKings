@@ -1,6 +1,6 @@
 
 from typing import TypedDict
-from video_processor import process_video
+
 from langgraph.graph import StateGraph, START, END
 from langchain_core.messages import SystemMessage, HumanMessage
 
@@ -24,12 +24,16 @@ structured_llm = classification_llm.with_structured_output(
 )
 
 def process_attachments(state: ComplaintState):
+
     complaint_text = state.get("complaint_text", "")
     attachments = state.get("attachments", [])
+
     processed_text = f"Complaint:\n{complaint_text}"
 
     for attachment in attachments:
+
         mime_type = attachment["mime_type"]
+        data = attachment["data"]
 
         if mime_type.startswith("image/"):
             description = process_image(
@@ -37,22 +41,25 @@ def process_attachments(state: ComplaintState):
                 mime_type=mime_type,
             )
 
-            processed_text += "\n\nImage description:\n" + description
+            description = process_image(
+                image_bytes=data,
+                mime_type=mime_type,
+            )
+
+            processed_text += (
+                "\n\nImage description:\n" + description
+            )
 
         elif mime_type.startswith("audio/"):
+
             transcript = process_audio(
-                audio_bytes=attachment["data"],
+                audio_bytes=data,
                 filename=attachment["filename"],
             )
 
-            processed_text += "\n\nAudio transcript:\n" + transcript
-
-        elif mime_type.startswith("video/"):
-            video_result = process_video(
-                video_path=attachment["path"]
+            processed_text += (
+                "\n\nAudio transcript:\n" + transcript
             )
-
-            processed_text += "\n\nVideo analysis:\n" + video_result
 
         else:
             raise ValueError(
@@ -60,6 +67,7 @@ def process_attachments(state: ComplaintState):
             )
 
     return {"processed_text": processed_text}
+
 
 def classify_complaint(state: ComplaintState):
 
