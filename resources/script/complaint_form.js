@@ -31,18 +31,7 @@ form.addEventListener("submit", async (e) => {
     const files = Array.from(form.file.files || []);
     const voice = window.voiceNote?.blob || null;
 
-    // Contact information
-    const name = form.elements.namedItem("name").value.trim();
-    const phone = form.elements.namedItem("phone").value.trim();
-    const email = form.elements.namedItem("email").value.trim();
-
-    // Location information
-    const latitude = form.elements.namedItem("latitude").value;
-    const longitude = form.elements.namedItem("longitude").value;
-    const address = form.elements.namedItem("address").value.trim();
-
     console.log("Voice note at submission:", voice);
-
     if (voice) {
         console.log("Voice size:", voice.size);
         console.log("Voice type:", voice.type);
@@ -58,35 +47,13 @@ form.addEventListener("submit", async (e) => {
         return;
     }
 
-    if (!address && !(latitude && longitude)) {
-        showMessage(
-            "Please provide an address or use your current location.",
-            "error"
-        );
-        return;
-    }
-
     try {
-        const formData = packData(
-            title,
-            description,
-            files,
-            voice,
-            name,
-            phone,
-            email,
-            latitude,
-            longitude,
-            address
-        );
-
+        const formData = packData(title, description, files, voice);
         await submit_complaint(formData);
-
     } catch (err) {
         showMessage(err.message, "error");
     }
 });
-
 
 function showMessage(text, type = "info") {
     msg.textContent = text;
@@ -99,7 +66,6 @@ function showMessage(text, type = "info") {
     msg.style.fontWeight = "500";
 }
 
-
 function setLoading(on) {
     submitBtn.disabled = on;
     submitBtn.textContent = on
@@ -107,39 +73,9 @@ function setLoading(on) {
         : "Submit Complaint";
 }
 
-
-function packData(
-    title,
-    description,
-    files = [],
-    voice = null,
-    name,
-    phone,
-    email,
-    latitude,
-    longitude,
-    address
-) {
+function packData(title, description, files = [], voice = null) {
     const formData = new FormData();
 
-    // These names match the UserInfo Pydantic schema.
-    const userDetails = {
-        name: name,
-        phone: phone || null,
-        email: email || null,
-        address: address || (
-            latitude && longitude
-                ? `${latitude}, ${longitude}`
-                : null
-        )
-    };
-
-    formData.append(
-        "user_details",
-        JSON.stringify(userDetails)
-    );
-
-    // Complaint text is sent separately.
     let complaint_text = "";
 
     if (title) {
@@ -152,17 +88,13 @@ function packData(
 
     formData.append("complaint_text", complaint_text);
 
-    // Attach uploaded files.
     files.forEach((file) => {
         formData.append("files", file);
     });
 
-    // Attach voice recording.
     if (voice) {
         if (voice.size === 0) {
-            throw new Error(
-                "Voice recording is empty. Please record again."
-            );
+            throw new Error("Voice recording is empty. Please record again.");
         }
 
         const extension = voice.type.includes("mp4")
@@ -176,7 +108,7 @@ function packData(
         );
     }
 
-    console.log("Uploading form data:");
+    console.log("Uploading files:");
 
     for (const [key, value] of formData.entries()) {
         if (value instanceof File) {
@@ -186,14 +118,11 @@ function packData(
                 value.size,
                 value.type
             );
-        } else {
-            console.log(key, value);
         }
     }
 
     return formData;
 }
-
 
 async function submit_complaint(formData) {
     const controller = new AbortController();
@@ -234,15 +163,11 @@ async function submit_complaint(formData) {
 
         // Handle successfully saved complaints.
         showResult(body);
-
-        showMessage(
-            "Complaint submitted successfully.",
-            "success"
-        );
+        showMessage("Complaint submitted successfully.", "success");
 
         form.reset();
 
-        // Clear recorded voice note.
+        // Clear the recorded voice note.
         document.getElementById("deleteBtn")?.click();
 
         return body;
@@ -263,9 +188,11 @@ async function submit_complaint(formData) {
     }
 }
 
-
-// Display the backend response.
-function showResult(body) {
+function showResult({
+    query_description,
+    department,
+    importance_score
+}) {
     responseBox.replaceChildren();
 
     const heading = document.createElement("h3");
@@ -308,7 +235,6 @@ function showResult(body) {
     }
 }
 
-
 function validate(data, files) {
     if (
         !data.title &&
@@ -339,107 +265,3 @@ function validate(data, files) {
     return null;
 }
 
-
-// Location handling
-(function () {
-    const locationBtn = document.getElementById("getLocation");
-    const locationStatus = document.getElementById("status");
-    const latInput = document.getElementById("latitude");
-    const lngInput = document.getElementById("longitude");
-    const addressInput = document.getElementById("address");
-    const locationError = document.getElementById("error");
-
-    function setStatus(message, isError = false) {
-        locationStatus.textContent = message;
-        locationStatus.style.color = isError ? "red" : "green";
-    }
-
-    function clearCoordinates() {
-        latInput.value = "";
-        lngInput.value = "";
-    }
-
-    function handleLocationError(err) {
-        clearCoordinates();
-
-        switch (err.code) {
-            case err.PERMISSION_DENIED:
-                setStatus(
-                    "Location permission denied. Please type your address below.",
-                    true
-                );
-                break;
-
-            case err.POSITION_UNAVAILABLE:
-                setStatus(
-                    "Location unavailable. Please type your address below.",
-                    true
-                );
-                break;
-
-            case err.TIMEOUT:
-                setStatus(
-                    "Location request timed out. Please try again or type your address.",
-                    true
-                );
-                break;
-
-            default:
-                setStatus(
-                    "Could not get location. Please type your address below.",
-                    true
-                );
-        }
-
-        addressInput.focus();
-    }
-
-    function getLocation() {
-        if (!("geolocation" in navigator)) {
-            setStatus(
-                "Your browser does not support location. Please type your address.",
-                true
-            );
-            addressInput.focus();
-            return;
-        }
-
-        locationError.textContent = "";
-        locationBtn.disabled = true;
-        setStatus("Getting your location...");
-        locationStatus.style.color = "";
-
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                const {
-                    latitude,
-                    longitude,
-                    accuracy
-                } = position.coords;
-
-                latInput.value = latitude.toFixed(6);
-                lngInput.value = longitude.toFixed(6);
-
-                setStatus(
-                    `Location captured ✔ (accuracy: about ${Math.round(accuracy)} m)`
-                );
-
-                locationBtn.disabled = false;
-                locationBtn.textContent = "📍 Update my location";
-            },
-
-            (err) => {
-                handleLocationError(err);
-                locationBtn.disabled = false;
-            },
-
-            {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 0
-            }
-        );
-    }
-
-    locationBtn.addEventListener("click", getLocation);
-})();
