@@ -3,6 +3,14 @@ from models import Complaint, ComplaintAttachment
 from storage import upload_file, delete_file
 
 
+# Maps UserInfo schema fields to SQLAlchemy Complaint columns.
+USER_FIELD_MAPPING = {
+    "name": "user_name",
+    "phone": "phone_number",
+    "address": "location",
+}
+
+
 def save_complaint(db, llm_output, uploaded_files, user_details=None):
     """
     Save the structured complaint, user details and attachment metadata.
@@ -17,10 +25,17 @@ def save_complaint(db, llm_output, uploaded_files, user_details=None):
     user_details = user_details or {}
     uploaded_keys = []
 
+    # Convert UserInfo field names to Complaint model field names.
+    mapped_user_details = {
+        db_field: user_details[schema_field]
+        for schema_field, db_field in USER_FIELD_MAPPING.items()
+        if schema_field in user_details
+    }
+
     try:
         complaint = Complaint(
             **output,
-            **user_details
+            **mapped_user_details
         )
 
         db.add(complaint)
