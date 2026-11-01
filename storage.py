@@ -39,6 +39,7 @@ ALLOWED_TYPES = {
     "audio/mp4",
     "audio/ogg",
     "audio/aac",
+    "audio/webm"
 }
 
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MiB
@@ -47,8 +48,10 @@ MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MiB
 def upload_file(file, complaint_id):
     if file is None:
         raise ValueError("No file provided")
-
     mime_type = getattr(file, "content_type", None)
+
+    print("RECEIVED MIME TYPE:", mime_type)
+    mime_type = mime_type.split(";")[0].strip().lower()
     if mime_type not in ALLOWED_TYPES:
         raise ValueError("Unsupported file type")
 

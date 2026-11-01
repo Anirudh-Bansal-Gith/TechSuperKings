@@ -18,7 +18,7 @@ class ComplaintState(TypedDict, total=False):
     structured_output: Schema
 
 
-structured_llm = llm.with_structured_output(
+structured_llm = classification_llm.with_structured_output(
     Schema,
     method="function_calling"
 )
