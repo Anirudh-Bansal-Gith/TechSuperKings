@@ -14,4 +14,4 @@ google-genai
 langchain-google-genai
 requests
 starlette
-
+jinja2
