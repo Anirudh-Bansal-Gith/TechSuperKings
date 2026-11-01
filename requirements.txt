@@ -4,7 +4,6 @@ pydantic
 python-dotenv
 sqlalchemy
 sqlalchemy-libsql
-libsql-experimental
 boto3
 fastapi
 uvicorn
@@ -15,7 +14,5 @@ google-genai
 langchain-google-genai
 requests
 starlette
-geopy
+jinja2
 sarvamai
-streamlit
-
