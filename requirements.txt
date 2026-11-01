@@ -15,4 +15,7 @@ google-genai
 langchain-google-genai
 requests
 starlette
+geopy
+sarvamai
+streamlit
 

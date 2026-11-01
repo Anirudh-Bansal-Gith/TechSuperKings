@@ -1,314 +1,259 @@
-# FORGE26 – Government Complaint Classification System
+# FORGE26 - Government Complaint Classification System
 
-## 1. Project Overview
+A FastAPI-based backend system that processes and classifies public complaints with support for text, images, videos, and audio attachments. The system uses LangGraph for workflow orchestration, LangChain for LLM integration, and stores data in Turso DB with original attachments in Backblaze B2.
 
-This project aims to build a backend system for processing and classifying public complaints.
+## Table of Contents
 
-Users can submit:
-- Complaint text
-- Images
-- Videos
-- Audio recordings (planned)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Architecture](#architecture)
+- [Project Structure](#project-structure)
+- [Setup](#setup)
+- [Environment Variables](#environment-variables)
+- [Usage](#usage)
+- [API Endpoints](#api-endpoints)
+- [Testing](#testing)
+- [Design Principles](#design-principles)
+- [Contributing](#contributing)
+- [License](#license)
 
-The system analyses the complaint and its attachments, then generates a structured classification containing:
+## Features
 
-- **Query description:** A description of the complaint.
-- **Department:** The government department responsible for handling it.
-- **Importance score:** A score ranging from -100 to 100.
+- **Multi-modal complaint submission**: Accept complaints as text with optional images, videos, and audio files
+- **Intelligent classification**: Automatically categorizes complaints into government departments with importance scoring (-100 to 100)
+- **Image analysis**: Extracts detailed, factual descriptions from complaint images
+- **Video processing**: Scene detection, timestamped frame analysis, and audio transcription from videos
+- **Audio transcription**: Multilingual audio transcription using Sarvam AI
+- **Geolocation**: Reverse geocoding to convert coordinates to human-readable addresses
+- **Evidence preservation**: Original attachments stored separately in object storage
+- **Structured output**: Pydantic-validated classification results
 
-The original complaint attachments are stored separately so they can be retained as supporting evidence.
-
----
-
-## 2. Technology Stack
+## Tech Stack
 
 | Component | Technology |
 |---|---|
-| Backend | Python |
-| API | FastAPI |
-| LLM integration | LangChain |
-| LLM provider | OpenRouter |
-| Workflow orchestration | LangGraph |
-| Data validation | Pydantic |
-| Database | SQLAlchemy + Turso |
-| File storage | Backblaze B2 |
-| Testing | pytest |
+| Backend Framework | [FastAPI](https://fastapi.dev/) |
+| Workflow Orchestration | [LangGraph](https://www.langchain.com/langgraph) |
+| LLM Integration | [LangChain](https://www.langchain.com/) |
+| LLM Providers | [OpenRouter](https://www.openrouter.ai/), [Google Gemini](https://ai.google.dev/) |
+| Data Validation | [Pydantic](https://docs.pydantic.dev/) |
+| Database | [SQLAlchemy](https://www.sqlalchemy.org/) + [Turso](https://turso.tech/) (libSQL) |
+| Object Storage | [Backblaze B2](https://www.backblaze.com/cloud-storage) |
+| Media Processing | [FFmpeg](https://ffmpeg.org/) |
+| Audio Transcription | [Sarvam AI](https://www.sarvam.ai/) |
+| Testing | [pytest](https://docs.pytest.org/) |
 
----
+## Architecture
 
-## 3. High-Level Architecture
-
-The backend is divided into three main responsibilities:
-
-1. Receiving and validating complaint submissions.
-2. Processing complaint attachments and classifying complaints.
-3. Persisting complaint data and original attachments.
-
-### Complaint processing workflow
+### Workflow
 
 ```text
-                User Submission
-                       |
-                       v
-                    main.py
-                       |
-                       v
-                    graph.py
-                       |
-          +------------+------------+
-          |            |            |
-          v            v            v
-    Image Processor  Video Processor  Audio Processor
-          |            |            |
-          v            v            v
-    Image Description Video Description Transcript
-          |            |            |
-          +------------+------------+
-                       |
-                       v
-              Combine Extracted Text
-                       |
-                       v
-              Classification LLM
-                       |
-                       v
-              Structured Pydantic Output
-                       |
-                       v
-               Complaint Persistence
-                       |
-              +--------+--------+
-              |                 |
-              v                 v
-          Turso DB          Backblaze B2
-       Metadata/records    Original attachments
+User Submission (Text + Attachments + User Details)
+                        ↓
+                      main.py
+                        ↓
+                      graph.py (LangGraph)
+                        ↓
+                process_attachments()
+                ├── Image → image_processor.py → Description
+                ├── Audio → audio_processor.py → Transcript
+                └── Video → video_processor.py → Transcript + Timestamped Visual Analysis
+                        ↓
+                    classify_complaint()
+                        ↓
+                    Structured Pydantic Output
+                    (query_description, department, importance_score)
+                        ↓
+                      persistence.py
+                ├── Turso DB (metadata/records)
+                └── Backblaze B2 (original attachments)
 ```
 
-**Important:** The modality-specific processors convert attachments into textual representations. The classification LLM then works with the complaint text and extracted information.
+**Key Principle**: Media processors convert attachments into textual representations for classification. Original attachments are always preserved in storage as evidence.
 
-The original attachments are not replaced by their descriptions or transcripts.
-
----
-
-## 4. Project Structure
-
-The following describes the current modules and the planned media-processing modules.
+## Project Structure
 
 ```text
-project/
-│
-├── main.py
-├── graph.py
-├── schema.py
-├── prompts.py
-├── database.py
-├── models.py
-├── persistence.py
-├── storage.py
-│
-├── image_processor.py       # Planned
-├── video_processor.py       # Planned
-├── audio_processor.py       # Planned
-│
-└── test/
-    └── test.py
+FORGE26/
+├── main.py              # API entry point and complaint processing logic
+├── graph.py             # LangGraph workflow orchestration
+├── schema.py            # Pydantic schemas and department enum
+├── prompts.py           # LLM system prompts
+├── llms.py              # LLM configurations (vision, classification)
+├── database.py          # Database setup and session management
+├── models.py            # SQLAlchemy ORM models
+├── persistence.py       # Data persistence logic
+├── storage.py           # Backblaze B2 upload/download
+├── tracking.py          # Request tracking
+├── user_tracking.py     # User analytics
+├── api.py               # Additional API routes
+├── admin.py             # Admin functionality
+├── streamlit_app.py     # Streamlit dashboard
+├── make_table.py        # Database table creation utility
+├── image_processor.py   # Image description extraction
+├── video_processor.py   # Video scene detection and analysis
+├── audio_processor.py   # Audio transcription via Sarvam AI
+├── requirements.txt     # Python dependencies
+└── test/                # Test suite
 ```
 
-### Existing modules
+### Module Responsibilities
 
-| File | Responsibility |
+| Module | Description |
 |---|---|
-| `main.py` | API entry point; receives complaint submissions and prepares inputs for processing. |
-| `graph.py` | Orchestrates the complaint-processing and classification workflow using LangGraph. |
-| `schema.py` | Defines the Pydantic schema and valid department values for classification output. |
-| `prompts.py` | Contains instructions for the classification LLM. |
-| `database.py` | Handles database configuration and connectivity. |
-| `models.py` | Defines database models using SQLAlchemy. |
-| `persistence.py` | Handles saving complaint records and related metadata. |
-| `storage.py` | Handles uploading original attachments to Backblaze B2. |
+| `main.py` | Handles complaint submission, geolocation, attachment preparation, and coordination |
+| `graph.py` | Defines LangGraph state machine for attachment processing and classification |
+| `schema.py` | Defines `Schema` (query_description, department, importance_score) and valid departments |
+| `image_processor.py` | Converts images to factual, detailed descriptions using vision LLM |
+| `video_processor.py` | Extracts audio, detects scenes, analyzes frames with timestamps, combines results |
+| `audio_processor.py` | Transcribes audio using Sarvam AI's `saaras:v4` model |
+| `storage.py` | Manages uploads to Backblaze B2 S3-compatible storage |
+| `persistence.py` | Saves complaint records and attachment metadata to database |
+| `models.py` | Defines database schema (Complaint, Attachment models) |
 
-### Planned processing modules
+## Setup
 
-| File | Responsibility |
-|---|---|
-| `image_processor.py` | Converts images into detailed, factual visual descriptions. |
-| `video_processor.py` | Analyses videos and produces chronological descriptions with timestamps. |
-| `audio_processor.py` | Transcribes audio into text, with multilingual support. |
+### Prerequisites
 
-These processors should remain independent of the classification workflow. Their outputs should be textual representations that `graph.py` can combine.
+- Python 3.10+
+- [FFmpeg](https://ffmpeg.org/download.html) installed and in PATH
+- API keys for OpenRouter/Google Gemini, Sarvam AI, Turso DB, Backblaze B2
 
----
+### Installation
 
-## 5. Attachment Processing Design
-
-### Image processing
-
-**Input:** An image file.
-
-**Output:** A detailed textual description of its visible contents.
-
-The processor should:
-- Describe relevant objects, structures and visible conditions.
-- Preserve readable text, signs and numbers.
-- Describe relevant spatial relationships.
-- Avoid assuming causes, identities, intentions or responsibility.
-- Clearly identify unclear or unobservable details.
-
-### Video processing
-
-**Input:** A video file.
-
-**Output:** A chronological textual description of relevant events.
-
-Proposed workflow:
-
-1. Detect scene boundaries.
-2. Select representative frames.
-3. Analyse selected frames using a vision-capable LLM.
-4. Combine observations into a coherent description.
-5. Preserve timestamps for important events.
-
-The implementation should avoid blindly processing every frame, particularly for large videos.
-
-### Audio processing
-
-**Input:** An audio file.
-
-**Output:** A transcript of the spoken content.
-
-This module will be developed separately and should support multiple languages.
-
----
-
-## 6. Classification Output
-
-The existing classification output is represented by a Pydantic schema.
-
-Conceptually, it contains:
-
-```python
-class Schema(BaseModel):
-    query_description: str
-    department: Department
-    importance_score: int
+1. **Clone the repository**
+```bash
+git clone <repository-url>
+cd FORGE26
 ```
 
-The importance score is constrained to the range `-100` to `100`.
+2. **Create virtual environment**
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
 
-The classification LLM should use:
-- The original complaint text.
-- Extracted image descriptions.
-- Extracted video descriptions.
-- Audio transcripts, once implemented.
+3. **Install dependencies**
+```bash
+pip install -r requirements.txt
+```
 
-It must not treat uncertain observations or assumptions as established facts.
+4. **Set up environment variables** (see [Environment Variables](#environment-variables))
+```bash
+cp .env.example .env  # If exists, or create .env manually
+```
 
----
+5. **Initialize database**
+```bash
+python make_table.py
+```
 
-## 7. File Storage and Persistence
+6. **Run the API server**
+```bash
+uvicorn main:app --reload
+```
 
-There are two separate kinds of data:
+The API will be available at `http://localhost:8000`. Interactive docs at `http://localhost:8000/docs`.
 
-### Database – Turso
+## Environment Variables
 
-Stores structured complaint information and related metadata.
+Create a `.env` file in the project root with the following variables:
 
-### Object storage – Backblaze B2
+```env
+# LLM Configuration
+OPENROUTER_API_KEY=your_openrouter_key
+GOOGLE_API_KEY=your_google_gemini_key
 
-Stores the original uploaded attachments.
+# Audio Transcription
+SARVAM_API_KEY=your_sarvam_key
 
-**Do not replace original attachments with extracted text.** The extracted descriptions and transcripts are used for processing; the original files remain available as evidence.
+# Database (Turso)
+TURSO_DATABASE_URL=libsql://your-db.turso.io
+TURSO_AUTH_TOKEN=your_turso_token
 
-Media processing and permanent attachment storage are separate responsibilities.
+# Object Storage (Backblaze B2)
+B2_ENDPOINT_URL=https://s3.us-west-000.backblazeb2.com
+B2_KEY_ID=your_b2_key_id
+B2_APPLICATION_KEY=your_b2_app_key
+B2_BUCKET_NAME=your_bucket_name
+```
 
----
+## Usage
 
-## 8. Testing
-
-The project uses `pytest`.
-
-Run tests from the project root:
+### Running the API
 
 ```bash
-python -m pytest test/test.py -v -s
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Existing tests cover cases such as:
-- Text-only complaints.
-- Missing or empty attachment collections.
-- Null or empty attachment entries.
-- Missing MIME types.
-- Unsupported attachment types.
+### Using Streamlit Dashboard
 
-New processors should have independent tests for their input validation, processing behaviour and output format.
+```bash
+streamlit run streamlit_app.py
+```
 
-Avoid making tests depend unnecessarily on live LLM calls. Where appropriate, mock the LLM response to test the surrounding processing logic.
+## API Endpoints
 
----
+Key endpoints (see `main.py` for full details):
 
-## 9. Contribution Guidelines
+- `POST /complaint` - Submit a complaint with text and attachments
+- `GET /complaints` - Retrieve complaints
+- Admin endpoints available via `admin.py`
 
-The project is modular. Contributors should work within clearly separated responsibilities.
+## Testing
 
-### Media processing contributor
+Run the test suite:
 
-Possible tasks:
-- Implement `image_processor.py`.
-- Implement `video_processor.py`.
-- Design reliable prompts for factual extraction.
-- Test processing on real-world complaint attachments.
-- Evaluate whether important evidence is being missed.
+```bash
+# Run all tests
+python -m pytest -v
 
-### Backend / integration contributor
+# Run specific test file
+python -m pytest test/test.py -v -s
 
-Possible tasks:
-- Integrate processors into `graph.py`.
-- Handle uploaded files efficiently in `main.py`.
-- Ensure that multiple attachments are processed correctly.
-- Handle processing failures without breaking unrelated parts of the workflow.
+# Run with coverage
+python -m pytest --cov=. -v
+```
 
-### Database / persistence contributor
+### Test Coverage
 
-Possible tasks:
-- Work on complaint persistence.
-- Maintain database relationships and attachment metadata.
-- Ensure failed database operations do not leave inconsistent storage records.
+Existing tests cover:
+- Text-only complaints
+- Missing/empty attachment collections
+- Null or empty attachment entries
+- Missing MIME types
+- Unsupported attachment types
 
-Before modifying shared modules, coordinate with the person responsible for that module.
+**Note**: Tests should avoid live LLM calls. Mock LLM responses when testing processing logic.
 
-### General rules
+## Design Principles
 
-1. Keep processing logic separate from API and database logic.
-2. Do not duplicate existing functionality.
-3. Keep function inputs and outputs clearly defined.
-4. Validate inputs and handle errors explicitly.
-5. Add tests for new functionality.
-6. Do not commit API keys, credentials or `.env` files.
-7. Avoid changing existing modules unless the change is required for your task.
+1. **Separation of concerns**: Media understanding is separate from complaint classification. Each processor has a single responsibility.
+2. **Evidence preservation**: Original attachments are never replaced by extracted text/descriptions.
+3. **Factual extraction**: Processors describe observations factually without assuming causes, identities, or intentions.
+4. **Modularity**: Components are independent and easily testable.
+5. **Robust error handling**: Processing failures are handled gracefully without breaking the workflow.
+6. **Efficient processing**: Video processing uses scene detection and frame sampling to avoid processing every frame.
 
----
+## Contributing
 
-## 10. Current Development Direction
+### Guidelines
 
-The immediate focus is to build a reliable attachment-processing pipeline.
+- Keep processing logic separate from API and database logic
+- Don't duplicate existing functionality
+- Validate inputs and handle errors explicitly
+- Add tests for new functionality
+- Never commit API keys, credentials, or `.env` files
+- Coordinate before modifying shared modules
+- Follow existing code style and patterns
 
-Planned order:
+### Areas to Contribute
 
-1. Implement and test image processing.
-2. Implement video processing.
-3. Integrate both into the existing LangGraph workflow.
-4. Test complaints containing multiple attachments.
-5. Develop multilingual audio transcription separately.
-6. Evaluate the complete complaint-classification pipeline.
+- **Media Processing**: Improve image/video/audio processors, add support for new formats
+- **Backend/Integration**: Enhance LangGraph workflow, optimize file handling
+- **Database/Persistence**: Improve schema, add queries, optimize storage
+- **Testing**: Add more comprehensive test coverage
 
-The existing classification and persistence systems should be preserved while these additions are developed.
+## License
 
----
-
-## 11. Important Design Principle
-
-**Separate media understanding from complaint classification.**
-
-Each media processor is responsible for extracting useful information from its input. The classification system is responsible for interpreting the complaint and assigning the appropriate department and importance score.
-
-This separation makes the system easier to test, maintain and extend to additional media types.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

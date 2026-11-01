@@ -1,4 +1,7 @@
 import json
+from admin import router as admin_router
+from tracking import router as tracking_router
+
 
 from fastapi import (
     FastAPI,
@@ -30,6 +33,9 @@ app.mount("/script", StaticFiles(directory="resources/script"), name="script")
 
 templates = Jinja2Templates(directory="resources/templates")
 
+
+app.include_router(admin_router)
+app.include_router(tracking_router)
 
 @app.post("/complaints")
 def create_complaint(
