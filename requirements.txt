@@ -4,7 +4,6 @@ pydantic
 python-dotenv
 sqlalchemy
 sqlalchemy-libsql
-libsql-experimental
 boto3
 fastapi
 uvicorn
