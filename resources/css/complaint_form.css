@@ -176,7 +176,7 @@ button[type="submit"] { width: 100%; justify-content: center; padding: .8rem; bo
 
 .recorder-container audio { width: 100%; }
 
-/* Make [hidden] win over display rules above */
+
 [hidden] { display: none !important; }
 
 @keyframes pulse {
